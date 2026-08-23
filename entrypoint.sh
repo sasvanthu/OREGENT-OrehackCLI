@@ -7,7 +7,7 @@ echo "=========================================="
 
 echo "[1/5] Fetching latest code from GitHub..."
 REPO_URL="https://github.com/sasvanthu/OREGENT-Orehack.git"
-BRANCH="OREHACK-CLI-Backend"
+BRANCH="main"
 
 if [ ! -d "/app/src" ]; then
     echo "Cloning repository ($BRANCH) for the first time..."
