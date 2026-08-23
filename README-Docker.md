@@ -18,9 +18,11 @@ Create a `.zip` file containing **only** these 4 files from your root directory:
 
 Distribute this ZIP file to your admins.
 
-### 2. Reset the Database for a Fresh Evaluation
-If you have old evaluation scores from past testing or previous hackathons and want to clear them out so the AI can evaluate them fresh, run this SQL query in your **Supabase SQL Editor**:
+### 2. Reset the Database (Two Options)
+Depending on what you want to do, run one of the following SQL queries in your **Supabase SQL Editor**:
 
+#### Option A: Erase Scores Only (Keep the teams)
+If you want to clear out previous scores and errors but keep all the teams in the database so the AI can evaluate them again:
 ```sql
 UPDATE "submissions"
 SET 
@@ -34,7 +36,13 @@ SET
     "retry_count" = 0,
     "last_error" = NULL;
 ```
-*This completely clears out previous scores and errors without deleting any rows or team data.*
+
+#### Option B: Wipe All Data (Start a fresh hackathon)
+If you are starting a completely new hackathon and want to delete all past teams and rows, but keep the empty table structure intact:
+```sql
+TRUNCATE TABLE "submissions";
+```
+*Warning: This will instantly delete all data inside the submissions table. It cannot be undone.*
 
 ---
 
