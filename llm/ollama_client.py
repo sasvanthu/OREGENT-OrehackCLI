@@ -1,9 +1,10 @@
 import requests
 import time
+import os
 
-OLLAMA_URL     = "http://localhost:11434/api/generate"
-PRIMARY_MODEL  = "deepseek-coder:6.7b"
-REVIEWER_MODEL = "deepseek-coder:6.7b"
+OLLAMA_URL     = os.environ.get("OLLAMA_URL", "http://localhost:11434/api/generate")
+PRIMARY_MODEL  = os.environ.get("OLLAMA_MODEL", "deepseek-coder:6.7b")
+REVIEWER_MODEL = os.environ.get("OLLAMA_MODEL", "deepseek-coder:6.7b")
 
 
 def call_ollama(prompt, model=None, retries=2, timeout=180, num_predict=512, num_ctx=2048):
