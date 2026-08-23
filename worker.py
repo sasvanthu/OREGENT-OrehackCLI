@@ -46,7 +46,7 @@ from main import run_pipeline
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 
-TABLE         = "Submissions"   # CASE-SENSITIVE — must match Supabase exactly
+TABLE         = "submissions"   # CASE-SENSITIVE — must match Supabase exactly
 POLL_INTERVAL = 10              # seconds between polls when idle
 BATCH_SIZE    = 1               # rows fetched per poll — keep at 1 for parallel multi-machine
 MAX_RETRIES   = 3               # max transient failure retries before a row is rejected
