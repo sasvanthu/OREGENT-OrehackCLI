@@ -142,13 +142,13 @@ OREHACKCLI/
 
 | Component | Tool |
 |---|---|
-| Language | Python 3.11 |
+| Language | Python 3.13 (Docker default) |
 | LLM | Ollama (local) — deepseek-coder:6.7b |
 | Database | Supabase (PostgreSQL) |
-| AST Parsing | Python `ast` module + `tree-sitter-languages` |
+| AST Parsing | Regex Fallback & tree-sitter |
 | DB Client | `supabase-py` |
 
-> **Note:** Python 3.11 specifically — `tree-sitter-languages` is not compatible with Python 3.13.
+> **Note:** The Docker container uses Python 3.13 and defaults to highly-accurate Regex parsing for all supported languages.
 
 ---
 
@@ -173,24 +173,24 @@ The engine supports static analysis, dependency graphing, and security scanning 
 
 ## Setup & Installation
 
-### Prerequisites
+### 1. Automated Setup (Recommended)
 
-- Python 3.11
-- [Ollama](https://ollama.com) installed and running
-- deepseek-coder:6.7b pulled
-- Git installed
-- Supabase project with the `Submissions` table (for worker mode only)
+The easiest and recommended way to run the Engine is using Docker. This handles all dependencies, hardware detection, auto-updating from GitHub, and Ollama installation automatically.
 
-### Install
+👉 **[View the full Docker Setup Guide here](README-Docker.md)**
+
+---
+
+### 2. Manual Setup (For Developers)
+
+If you wish to develop or run without Docker:
 ```bash
 # Clone the repo
-git clone https://github.com/your-org/orehack-evaluation-engine
-cd orehack-evaluation-engine/evaluation_engine1
+git clone https://github.com/sasvanthu/OREGENT-Orehack.git
+cd OREGENT-Orehack
 
-# Create virtual environment with Python 3.11
-py -3.11 -m venv venv
-
-# Activate
+# Create virtual environment
+python -m venv venv
 venv\Scripts\activate        # Windows
 source venv/bin/activate     # macOS / Linux
 
@@ -228,7 +228,7 @@ The full evaluation runs and prints the score breakdown to the terminal.
 
 Connects to Supabase, polls for queued submissions, evaluates them automatically, and writes scores back to the database. This is what runs during the actual hackathon.
 
-Create a `.env` file in `OREHACKCLI/`:
+If you are using Docker, this runs automatically. If running manually, create a `.env` file in the root directory:
 ```env
 VITE_SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=eyJ...
@@ -241,19 +241,20 @@ Then run:
 python worker.py
 ```
 
-The worker will:
-- Poll every 10 seconds for rows where `Progress = 'queued'`
-- Claim each row atomically (`queued → processing`)
-- Run the full evaluation pipeline
-- Write scores back to the DB (`processing → completed`)
-- Reset to `queued` on failure for automatic retry
+The worker features a **bulletproof design**:
+- Polls every 10 seconds for rows where `Progress = 'queued'`
+- **Atomic claim:** Uses a SQL guard to prevent double-processing across multiple machines.
+- **Stale recovery:** Recovers rows if a machine crashes mid-evaluation.
+- **Max retries:** Retries failed evaluations up to 3 times before permanently rejecting them.
+- **Rejected retry pass:** Automatically gives rejected rows one last chance when the queue is completely empty.
 
 ### Status Flow
 ```
 Team submits    →  Progress = 'queued'
 Worker picks up →  Progress = 'processing'
 Evaluation done →  Progress = 'completed'  (scores written)
-Error / failure →  Progress = 'queued'     (retried next poll)
+Transient Error →  Progress = 'queued'     (retried next poll)
+Permanent Error →  Progress = 'rejected'   (given up)
 ```
 ---
 
@@ -269,10 +270,11 @@ The atomic claim logic prevents double-processing — even if 6 machines poll at
 
 Key settings in `worker.py`:
 ```python
-TABLE          = "Submissions"   # Supabase table name (case-sensitive)
-POLL_INTERVAL  = 10              # seconds between polls when idle
-BATCH_SIZE     = 5               # rows fetched per poll
-ERROR_BEHAVIOR = "queued"        # status on failure: 'queued' (retry) or 'rejected' (give up)
+TABLE         = "submissions"   # Supabase table name (case-sensitive)
+POLL_INTERVAL = 10              # seconds between polls when idle
+BATCH_SIZE    = 1               # rows fetched per poll (keep at 1 for parallel multi-machine)
+MAX_RETRIES   = 3               # max transient failure retries before a row is rejected
+STALE_TIMEOUT = 30              # minutes before recovering a crashed processing row
 ```
 
 Key settings in `ollama_client.py`:
